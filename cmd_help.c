@@ -8,6 +8,16 @@ void HelpCmdExeFun(int agrc, char *argv[])
     {
         printf("argv[%d]:%s \r\n",i,argv[i]);
     }
-    printf("\r\n");
+    return;
+}
+
+void Help1CmdExeFun(int agrc, char *argv[])
+{
+    printf("goodbye ,this is help\r\n");
+    int i=0;
+    for(i=0;i < agrc;i++)
+    {
+        printf("argv[%d]:%s \r\n",i,argv[i]);
+    }
     return;
 }

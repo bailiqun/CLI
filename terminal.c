@@ -79,37 +79,26 @@ int parse_line(const char* const line, char* argv[])
     return argc;
 }
 
-static char * delete_char (char *buffer, char *p, int *colp, int *np, int plen)
+static char* delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 {
-    char *s;
-    if (*np == 0)
-    {
-        return (p);
-    }
-
-    if (*(--p) == '\t') {           /* will retype the whole line   */
-        while (*colp > plen) {
-            puts (erase_seq);
-            (*colp)--;
-        }
-        for (s=buffer; s<p; ++s) {
-            if (*s == '\t') {
-                puts (tab_seq+((*colp) & 07));
-                *colp += 8 - ((*colp) & 07);
-            } else {
-                ++(*colp);
-                putc (*s, stdout );
-            }
-        }
-    } else {
-        puts (erase_seq);
-        (*colp)--;
-    }
+/*
+*   buffer: command string
+*   p     : delete  string
+*   colp  : col of p,length of all output in terminal
+*   np    : length of delete string
+*   Example:
+*   hello  o    14  4
+*   hello  lo   13  3
+*   hello  llo  12  2
+*/
+    if (*np == 0)  return (p);
+    printf ("\b \b");
+    (*colp)--;
     (*np)--;
-    return (p);
+    return (--p);
 }
 
-void print_prompt(const char* prompt)
+static void print_prompt(const char* prompt)
 {
     int prompt_len;
     char* ptr = prompt;
@@ -124,7 +113,6 @@ void print_prompt(const char* prompt)
         }
     }
 }
-
 
 int32_t readline_into_buffer ( char* const prompt, char* buffer)
 {
@@ -144,7 +132,8 @@ int32_t readline_into_buffer ( char* const prompt, char* buffer)
     while (1)
     {
         ch = usart_getchar();
-        printf("%c",ch);//commment in stm32
+        if(ch != 0x08)
+            printf("%c",ch);//commment in stm32
         switch (ch)
         {
             case '\r':              /* Enter        */
