@@ -9,4 +9,5 @@ SOURCES += main.c \
 
 HEADERS += \
     terminal.h \
-    cmd_help.h
+    cmd_help.h \
+    terminal_key.h

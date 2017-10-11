@@ -1,4 +1,6 @@
 #include "terminal.h"
+#include "terminal_key.h"
+
 #include "cmd_help.h"
 
 #include <stdio.h>
@@ -44,7 +46,7 @@ char usart_getchar(void)
 
 int register_cmd(char *name, char *usage, cmd_fun_t fun)
 {
-    int ret;
+    int ret = 1;
     if (cmd_num_current < MAX_CMD_NUM)
     {
         CmdTbl[cmd_num_current].name = name;
@@ -54,10 +56,10 @@ int register_cmd(char *name, char *usage, cmd_fun_t fun)
     }
     else
     {
-        printf("%s error\n");
-        return 1;
+        printf("error\n");
+        return -1;
     }
-    return 0;
+    return ret;
 }
 
 char parse_buf[256] ;
@@ -86,6 +88,7 @@ static char* delete_char (char *buffer, char *p, int *colp, int *np, int plen)
 *   p     : delete  string
 *   colp  : col of p,length of all output in terminal
 *   np    : length of delete string
+*   plen  : prompt length
 *   Example:
 *   hello  o    14  4
 *   hello  lo   13  3
@@ -122,9 +125,9 @@ int32_t readline_into_buffer ( char* const prompt, char* buffer)
     int prompt_len;      /* prompt length       */
 
     char *p = buffer;    /*input buff*/
-    char *p_buf = p;
+    char *p_buf = buffer;
 
-    print_prompt(prompt);
+    printf("%s",prompt);
 
     prompt_len=strlen(prompt);
     col = prompt_len;
@@ -132,47 +135,32 @@ int32_t readline_into_buffer ( char* const prompt, char* buffer)
     while (1)
     {
         ch = usart_getchar();
-        if(ch != 0x08)
-            printf("%c",ch);//commment in stm32
+        printf("%c",ch);//commment in stm32
         switch (ch)
         {
-            case '\r':              /* Enter        */
-            case '\n':
+            /* Enter */
+            case KEY_ASCIII_ENTER :
+            case KEY_ASCIII_RETURN:
                 *p = '\0';
                 return (p - p_buf);
 
-            case '\t':
+            /* Commander Hint */
+            case KEY_ASCIII_TAB:
                 find_similar_cmd(buffer);
                 return -1;
 
-            case '\0':              /* null          */
+            case '\0':
                 continue;
 
-            case 0x03:              /* ^C - break       */
-                p_buf[0] = '\0';    /* discard input */
-                continue;
+            case KEY_ASCIII_BREAK:            /* ^C - break       */
+            case KEY_ASCIII_ESCAPE:           /* ^W - erase word  */
+                *p = '\0';
+                printf(" \n");
+                return -1;
 
-            case 0x15:              /* ^U - erase line  */
-                while (col > prompt_len)
-                {
-                    puts (erase_seq);
-                    --col;
-                }
-                p = p_buf;
-                n = 0;
-                continue;
-
-            case 0x17:              /* ^W - erase word  */
-                p=delete_char(p_buf, p, &col, &n, prompt_len);
-                while ((n > 0) && (*p != ' '))
-                {
-                    p=delete_char(p_buf, p, &col, &n, prompt_len);
-                }
-                continue;
-
-            case 0x08:              /* ^H  - backspace  */
-            case 0x7F:              /* DEL - backspace  */
-                p=delete_char(p_buf, p, &col, &n, prompt_len);
+            case KEY_ASCIII_BACK:     /* ^H  - backspace  */
+            case KEY_ASCIII_DELETE:   /* DEL - backspace  */
+                p = delete_char(p_buf, p, &col, &n, prompt_len);
                 continue;
 
             default:
@@ -181,9 +169,9 @@ int32_t readline_into_buffer ( char* const prompt, char* buffer)
                  */
                 if (n < CONFIG_SYS_CBSIZE-2)
                 {
-                    ++ col;/*  echo input  */
-                    *p++ = ch;
-                    ++n;
+                    ++ col; /*  整个命令行包含提示命令行的计数 */
+                    ++ n;   /*  输入字符的计数*/
+                    *(p++) = ch;
                 }
                 else/*   Buffer full   */
                 {
@@ -219,10 +207,10 @@ int find_similar_cmd(char* cmd)
         }
         cmd_index++;
     }
-    printf("\r\n");
+    printf("\n");
     for(int i=0;i<similar_cmd_count;i++)
     {
-        printf("[%d]%s\r\n",i,CmdTbl[similar_cmd_item[i]].name);
+        printf("[%d]%s\n",i,CmdTbl[similar_cmd_item[i]].name);
     }
     return 0;
 }
@@ -254,7 +242,7 @@ int find_cmd(char* cmd)
     switch(similar_cmd_count)
     {
         case 0:{
-            printf("Command  [%s ]  don't support!\n", cmd);
+            printf("Command [%s] don't support!\n", cmd);
             return -1;
         }
         case 1:{
@@ -305,6 +293,7 @@ void terminal_spin()
     int32_t rc = -1;
     int32_t len;
     static char lastcommand[CONFIG_SYS_CBSIZE] = { 0 };
+
     memset(CmdTbl, 0, sizeof(CMD_STRUCT_T)*MAX_CMD_NUM);
 
     register_cmd("help",  "help0\n\r", HelpCmdExeFun);
@@ -325,7 +314,6 @@ void terminal_spin()
         {
             memset(lastcommand, '\0', CONFIG_SYS_CBSIZE);
             strncpy (lastcommand, console_buffer, strlen(console_buffer));
-
             rc = run_command (lastcommand);
             if (rc <= 0)
             {
