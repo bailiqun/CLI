@@ -7,6 +7,7 @@
 
 #define MAX_ARGC 10
 #define MAX_CMD_NUM 50
+
 #define CONFIG_SYS_CBSIZE 256
 
 #define CONFIG_SYS_PROMPT "robotics:~"
@@ -18,8 +19,8 @@ static char   tab_seq[] = "        ";       /* used to expand TABs  */
 typedef void (*cmd_fun_t)(int , char *[])  ;
 typedef struct CMD_STRUCT
 {
-    char name[30]; /* Command Name */
-    char usage[80];/* Usage message */
+    char* name; /* Command Name */
+    char* usage;/* Usage message */
     cmd_fun_t CmdFun;//void (*CmdFun)(int , char *[]);/* Command execute function */
 }CMD_STRUCT_T;
 
